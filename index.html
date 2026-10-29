@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#f6ebe6">
+    <script>
+        /* apply the saved theme before first paint (no flash) */
+        (function () {
+            try { document.documentElement.setAttribute("data-theme", localStorage.getItem("aura-theme") === "dark" ? "dark" : "light"); }
+            catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+        })();
+    </script>
+    <title>Aura Chat</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Nunito:wght@400;600;700&family=Merriweather:wght@400;700&family=Caveat:wght@500;700&family=Fira+Code:wght@400;500&family=Pacifico&display=swap" rel="stylesheet">
+    <!-- SweetAlert2 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+</head>
+<body>
+    <!-- Shared logo (defined once, reused everywhere) -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <linearGradient id="auraGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ecc6c0" />
+                <stop offset="50%" stop-color="#d09393" />
+                <stop offset="100%" stop-color="#a8606c" />
+            </linearGradient>
+            <filter id="glowEffect" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <symbol id="auraLogo" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="url(#auraGlow)" stroke-width="4" filter="url(#glowEffect)" opacity="0.9"/>
+                <path d="M32 30C25.3726 30 20 35.3726 20 42C20 46.5056 22.4839 50.4313 26.2 52.48L24.5 62L33.8 58.7052C35.733 59.5312 37.8182 60 40 60C46.6274 60 52 54.6274 52 48C52 41.3726 46.6274 36 40 36" fill="url(#auraGlow)"/>
+                <circle cx="62" cy="38" r="10" fill="#fff" stroke="#ecc6c0" stroke-width="1.5"/>
+                <circle cx="62" cy="38" r="5" fill="#b4707a"/>
+            </symbol>
+        </defs>
+    </svg>
+
+    <div class="background-blobs">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- Auth Modal (Login / Sign Up / Google) -->
+    <div class="modal-overlay hidden" id="authModal">
+        <div class="modal-card auth-card" id="authCard" data-mode="login">
+            <button type="button" class="theme-switch auth-theme-btn" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+            <div class="app-brand login-brand">
+                <div class="brand-logo"><svg viewBox="0 0 100 100"><use href="#auraLogo"/></svg></div>
+                <h2>Welcome to Aura<span>Chat</span></h2>
+            </div>
+            <p class="login-sub">Sign in to start chatting</p>
+
+            <div class="auth-tabs" role="tablist">
+                <span class="auth-tab-indicator"></span>
+                <button type="button" class="auth-tab active" id="tabLogin" role="tab">Log In</button>
+                <button type="button" class="auth-tab" id="tabSignup" role="tab">Sign Up</button>
+            </div>
+
+            <form id="authForm" novalidate>
+                <div class="auth-field name-field">
+                    <i class="fa-regular fa-user"></i>
+                    <input type="text" id="authName" placeholder="Display name" maxlength="20" autocomplete="nickname">
+                </div>
+                <div class="auth-field">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" id="authEmail" placeholder="Email address" autocomplete="email">
+                </div>
+                <div class="auth-field">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+                    <button type="button" class="eye-btn" id="togglePasswordBtn" aria-label="Show password"><i class="fa-regular fa-eye"></i></button>
+                </div>
+
+                <div class="auth-error" id="authError" role="alert"></div>
+
+                <div class="auth-row">
+                    <button type="button" class="link-btn" id="forgotBtn">Forgot password?</button>
+                </div>
+
+                <button type="submit" id="authSubmitBtn" class="btn-primary"><span>Log In</span></button>
+            </form>
+
+            <div class="auth-divider"><span>or continue with</span></div>
+
+            <button type="button" id="googleBtn" class="google-btn">
+                <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+                <span>Continue with Google</span>
+            </button>
+
+            <p class="auth-switch"><span id="switchModeText">Don't have an account?</span> <button type="button" class="link-btn" id="switchModeBtn">Sign up</button></p>
+        </div>
+    </div>
+
+    <!-- Profile Edit Modal -->
+    <div class="modal-overlay hidden" id="profileModal">
+        <div class="modal-card profile-card">
+            <button class="close-modal-btn" id="closeProfileModalBtn" aria-label="Close">&times;</button>
+            <div class="profile-avatar-wrapper">
+                <img id="profileModalImg" src="https://ui-avatars.com/api/?name=User&background=b4707a&color=fff" alt="Profile Picture">
+                <label for="profileImgInput" class="upload-avatar-overlay">
+                    <i class="fa-solid fa-camera"></i>
+                </label>
+                <input type="file" id="profileImgInput" accept="image/*" style="display: none;">
+            </div>
+            <h2 id="profileModalName">My Profile</h2>
+            <p id="profileModalEmail" class="user-bio-text profile-email"></p>
+            <input type="text" id="profileBioInput" placeholder="Update your status bio..." />
+            <button id="saveProfileBtn" class="btn-primary">Save Profile</button>
+            <button id="openPrivacyBtn" class="btn-primary secondary-btn" type="button"><i class="fa-solid fa-lock"></i> Privacy</button>
+            <button id="logoutBtn" class="btn-primary secondary-btn"><i class="fa-solid fa-arrow-right-from-bracket"></i> Log Out</button>
+            <button id="deleteMyAccountBtn" class="btn-primary danger-btn"><i class="fa-solid fa-user-slash"></i> Delete My Account</button>
+        </div>
+    </div>
+
+    <!-- View Member Profile Modal -->
+    <div class="modal-overlay hidden" id="viewUserModal">
+        <div class="modal-card profile-card">
+            <button class="close-modal-btn" id="closeViewUserModalBtn" aria-label="Close">&times;</button>
+            <div class="profile-avatar-wrapper">
+                <img id="viewUserImg" src="https://ui-avatars.com/api/?name=User" alt="Member Avatar">
+            </div>
+            <h2 id="viewUserName">Member Name</h2>
+            <p id="viewUserReal" class="user-bio-text" hidden></p>
+            <p id="viewUserBio" class="user-bio-text">No bio available</p>
+            <span class="status-badge live-badge" id="viewUserBadge"><i class="fa-solid fa-circle"></i> Active Now</span>
+            <button id="startDirectChatBtn" class="btn-primary dm-action-btn">Start Private Chat</button>
+            <button id="viewFavBtn" class="btn-primary secondary-btn" type="button"><i class="fa-regular fa-star"></i> Add to favourites</button>
+            <button id="viewCloseBtn" class="btn-primary secondary-btn" type="button"><i class="fa-regular fa-heart"></i> Add to Close Friends</button>
+            <button id="viewNickBtn" class="btn-primary secondary-btn" type="button"><i class="fa-solid fa-signature"></i> Set nickname</button>
+            <button id="viewBlockBtn" class="btn-primary danger-btn" type="button"><i class="fa-solid fa-ban"></i> Block</button>
+        </div>
+    </div>
+
+    <!-- Status viewer -->
+    <div class="status-viewer hidden" id="statusViewer" role="dialog" aria-label="Status">
+        <div class="sv-card">
+            <div class="sv-bars" id="svBars"></div>
+            <div class="sv-head">
+                <img id="svAvatar" class="member-list-img" alt="">
+                <div class="sv-meta"><b id="svName"></b><small id="svTime"></small></div>
+                <button type="button" class="sv-btn" id="svViewsBtn" hidden title="Seen by"><i class="fa-regular fa-eye"></i> <span id="svViews">0</span></button>
+                <button type="button" class="sv-btn" id="svDeleteBtn" hidden title="Delete status" aria-label="Delete status"><i class="fa-solid fa-trash"></i></button>
+                <button type="button" class="sv-btn" id="svClose" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="sv-stage" id="svStage"></div>
+            <button type="button" class="sv-nav sv-prev" id="svPrev" aria-label="Previous"><i class="fa-solid fa-chevron-left"></i></button>
+            <button type="button" class="sv-nav sv-next" id="svNext" aria-label="Next"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+    </div>
+    <input type="file" id="statusFileInput" accept="image/*" hidden>
+
+    <!-- New Group Modal -->
+    <div class="modal-overlay hidden" id="groupModal">
+        <div class="modal-card group-card">
+            <button class="close-modal-btn" id="closeGroupModalBtn" aria-label="Close">&times;</button>
+            <h2>New Group</h2>
+            <p class="login-sub">Name your group and choose who to add.</p>
+            <input type="text" id="groupNameInput" placeholder="Group name" maxlength="30" autocomplete="off">
+            <div class="group-picker-head"><span>Add members</span><span id="groupPickCount">0 selected</span></div>
+            <ul class="group-picker" id="groupPicker"></ul>
+            <button id="createGroupBtn" class="btn-primary">Create Group</button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar (drawer on mobile) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-scroll">
+            <div class="app-brand">
+                <div class="brand-logo"><svg viewBox="0 0 100 100"><use href="#auraLogo"/></svg></div>
+                <h2>Aura<span>Chat</span></h2>
+            </div>
+
+            <!-- User Profile Bar -->
+            <div class="user-profile-bar" id="openMyProfileBtn" title="Click to Edit Profile">
+                <div class="avatar-container">
+                    <img id="myAvatarImg" src="https://ui-avatars.com/api/?name=Me&background=b4707a&color=fff" class="avatar-img" alt="My Avatar">
+                </div>
+                <div class="user-info">
+                    <span class="user-name" id="displayUsername">Guest</span>
+                    <span class="status-badge"><i class="fa-solid fa-circle"></i> Online</span>
+                </div>
+                <i class="fa-solid fa-gear edit-profile-icon"></i>
+            </div>
+
+            <div class="online-section status-section">
+                <h3>Status</h3>
+                <div class="status-strip" id="statusStrip"></div>
+            </div>
+
+            <div class="online-section chats-section">
+                <h3>Chats</h3>
+                <button type="button" class="btn-primary btn-sm new-group-btn" id="newGroupBtn"><i class="fa-solid fa-user-group"></i> New Group</button>
+                <ul class="active-users-list" id="activeUsersList"></ul>
+            </div>
+
+            </div>
+
+            <nav class="sidebar-nav" aria-label="Quick access">
+                <button type="button" id="channelsBtn" title="Channels"><i class="fa-solid fa-bullhorn"></i><span>Channels</span></button>
+                <button type="button" id="gamesBtn" title="Games"><i class="fa-solid fa-gamepad"></i><span>Games</span></button>
+                <button type="button" id="privacyShortcutBtn" title="Privacy"><i class="fa-solid fa-shield-halved"></i><span>Privacy</span></button>
+            </nav>
+        </aside>
+
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <!-- Main Chat Area -->
+        <main class="chat-main">
+            <!-- Header -->
+            <header class="chat-header">
+                <button class="icon-btn menu-btn" id="menuToggleBtn" title="Members" aria-label="Open members"><i class="fa-solid fa-bars"></i></button>
+
+                <div class="room-details">
+                    <h3 id="currentChatTitle">Global Lounge</h3>
+                    <p id="roomStatus">End-to-End Encrypted Live Space</p>
+                </div>
+
+                <!-- Search Feature Bar -->
+                <div class="search-bar-container">
+                    <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                    <input type="text" id="searchInput" placeholder="Search in chat...">
+                </div>
+
+                <div class="call-actions">
+                    <button class="call-btn theme-switch" id="themeToggleBtn" title="Switch theme" aria-label="Switch theme"><i class="fa-solid fa-moon"></i></button>
+                    <button class="call-btn" id="wallpaperBtn" title="Appearance &amp; alerts" aria-label="Appearance and alerts"><i class="fa-solid fa-palette"></i></button>
+                    <button class="call-btn" id="remindersBtn" title="Reminders" aria-label="Reminders"><i class="fa-solid fa-calendar-check"></i></button>
+                    <button class="call-btn" id="startAudioCallBtn" title="Voice Call"><i class="fa-solid fa-phone"></i></button>
+                    <button class="call-btn" id="startVideoCallBtn" title="Video Call"><i class="fa-solid fa-video"></i></button>
+                    <div class="menu-wrap">
+                        <button class="call-btn" id="chatMenuBtn" title="More" aria-label="More options" aria-haspopup="true"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                        <div class="chat-menu hidden" id="chatMenu" role="menu">
+                            <button type="button" id="menuChannel" hidden><i class="fa-solid fa-bullhorn"></i> Channel info</button>
+                            <button type="button" id="menuGroupInfo" hidden><i class="fa-solid fa-circle-info"></i> Group info</button>
+                            <button type="button" id="menuFav"><i class="fa-regular fa-star"></i> Add to favourites</button>
+                            <button type="button" id="menuArchive"><i class="fa-solid fa-box-archive"></i> Archive chat</button>
+                            <button type="button" id="menuClose" hidden><i class="fa-regular fa-heart"></i> Add to Close Friends</button>
+                            <button type="button" id="menuNick" hidden><i class="fa-solid fa-signature"></i> Set nickname</button>
+                            <button type="button" id="menuMute"><i class="fa-solid fa-bell-slash"></i> Mute notifications</button>
+                            <button type="button" id="menuStarred"><i class="fa-solid fa-star"></i> Starred messages</button>
+                            <button type="button" id="menuDisappear"><i class="fa-solid fa-hourglass-half"></i> Disappearing messages</button>
+                            <button type="button" id="menuExport"><i class="fa-solid fa-file-arrow-down"></i> Export chat (.txt)</button>
+                            <button type="button" id="menuBlock" class="danger" hidden><i class="fa-solid fa-ban"></i> Block</button>
+                            <button type="button" id="menuClearChat" class="danger"><i class="fa-regular fa-trash-can"></i> Clear chat</button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Pinned message banner (always above the chat) -->
+            <div class="pinned-bar" id="pinnedBar" hidden>
+                <span class="pinned-icon"><i class="fa-solid fa-thumbtack"></i></span>
+                <button type="button" class="pinned-main" id="pinnedMain" title="Jump to pinned message">
+                    <span class="pinned-label">Pinned message <em id="pinnedCount"></em></span>
+                    <span class="pinned-text"><strong id="pinnedAuthor"></strong> <span id="pinnedText"></span></span>
+                </button>
+                <button type="button" class="pinned-unpin" id="pinnedUnpin" title="Unpin" aria-label="Unpin message"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Appearance panel: wallpaper picker -->
+            <div class="appearance-panel hidden" id="appearancePanel" role="dialog" aria-label="Chat wallpaper">
+                <div class="panel-head">
+                    <h4>Appearance &amp; Alerts</h4>
+                    <button type="button" class="panel-close" id="closeAppearanceBtn" aria-label="Close">&times;</button>
+                </div>
+                <p class="panel-sub">Pick a backdrop for your chats — saved on this device.</p>
+
+                <div class="wp-grid" id="wpGrid">
+                    <button type="button" class="wp-tile" data-wallpaper="aura"><span>Aura</span></button>
+                    <button type="button" class="wp-tile" data-wallpaper="silk"><span>Silk</span></button>
+                    <button type="button" class="wp-tile" data-wallpaper="sunset"><span>Sunset</span></button>
+                    <button type="button" class="wp-tile" data-wallpaper="dots"><span>Dots</span></button>
+                    <button type="button" class="wp-tile" data-wallpaper="stripes"><span>Stripes</span></button>
+                    <button type="button" class="wp-tile" data-wallpaper="plain"><span>Plain</span></button>
+                    <button type="button" class="wp-tile" data-wallpaper="custom" id="wpCustomTile" hidden><span>My photo</span></button>
+                </div>
+
+                <div class="panel-actions">
+                    <button type="button" class="btn-primary btn-sm" id="wallpaperUploadBtn"><i class="fa-regular fa-image"></i> Upload your own</button>
+                    <button type="button" class="btn-primary btn-sm secondary-btn panel-remove" id="wpRemoveBtn" title="Remove my photo" hidden><i class="fa-solid fa-trash"></i></button>
+                    <input type="file" id="wallpaperInput" accept="image/*" hidden>
+                </div>
+
+                <div class="panel-section">
+                    <h5>Chat text</h5>
+                    <div class="field-row"><span>Font style</span>
+                        <select id="fontSelect" class="panel-select" aria-label="Font style">
+                            <option value="default">Default</option>
+                            <option value="system">System</option>
+                            <option value="nunito">Rounded (Nunito)</option>
+                            <option value="merri">Serif (Merriweather)</option>
+                            <option value="caveat">Handwriting (Caveat)</option>
+                            <option value="pacifico">Script (Pacifico)</option>
+                            <option value="fira">Mono (Fira Code)</option>
+                        </select>
+                    </div>
+                    <div class="size-row">
+                        <button type="button" id="fontMinus" aria-label="Smaller text">A&minus;</button>
+                        <input type="range" id="fontSizeRange" min="12" max="24" step="1" value="15" aria-label="Text size">
+                        <button type="button" id="fontPlus" aria-label="Bigger text">A+</button>
+                    </div>
+                    <p class="font-preview" id="fontPreview">The quick brown fox jumps over the lazy dog 🌸</p>
+                    <button type="button" class="mini-btn" id="fontResetBtn">Reset text</button>
+                </div>
+
+                <div class="panel-section">
+                    <h5>Alerts</h5>
+                    <label class="switch-row"><span>Message notifications</span><input type="checkbox" id="notifToggle"></label>
+                    <label class="switch-row"><span>Notification sound</span><input type="checkbox" id="soundToggle"></label>
+                    <div class="field-row"><span>Sound</span>
+                        <span>
+                            <select id="soundSelect" class="panel-select" aria-label="Notification sound">
+                                <option value="chime">Chime</option>
+                                <option value="pop">Pop</option>
+                                <option value="bell">Bell</option>
+                                <option value="ding">Ding</option>
+                            </select>
+                            <button type="button" class="mini-btn" id="soundTestBtn" title="Play">&#9654;</button>
+                        </span>
+                    </div>
+                    <p class="panel-sub" id="notifHint"></p>
+                </div>
+            </div>
+
+            <!-- Video Call Overlay -->
+            <div class="video-call-overlay hidden" id="videoCallOverlay">
+                <span class="rec-badge hidden" id="recBadge"><i class="fa-solid fa-circle"></i> REC <b id="recTime">00:00</b></span>
+                <div class="video-grid">
+                    <div class="video-card">
+                        <video id="remoteVideo" autoplay playsinline></video>
+                        <span class="video-label">Remote User</span>
+                    </div>
+                    <div class="video-card">
+                        <video id="localVideo" autoplay playsinline muted></video>
+                        <span class="video-label">You</span>
+                    </div>
+                </div>
+                <div class="call-controls">
+                    <button id="toggleMicBtn" class="ctrl-btn"><i class="fa-solid fa-microphone"></i></button>
+                    <button id="toggleCamBtn" class="ctrl-btn"><i class="fa-solid fa-video"></i></button>
+                    <button id="recordCallBtn" class="ctrl-btn rec-btn" title="Record call" aria-label="Record call"><i class="fa-solid fa-circle-dot"></i></button>
+                    <button id="endCallBtn" class="ctrl-btn hangup-btn"><i class="fa-solid fa-phone-slash"></i></button>
+                </div>
+            </div>
+
+            <!-- Messages Stream -->
+            <div class="message-box" id="messages" data-wallpaper="aura"></div>
+
+            <!-- Typing Indicator -->
+            <div class="typing-indicator hidden" id="typingIndicator">
+                <span></span><span></span><span></span> <small id="typingText">Typing...</small>
+            </div>
+
+            <!-- Reply preview (shown above the input while replying) -->
+            <div class="reply-bar hidden" id="replyBar">
+                <i class="fa-solid fa-reply"></i>
+                <div class="reply-info"><b>Replying to <span id="replyName"></span></b><span id="replyText"></span></div>
+                <button type="button" id="replyCancel" aria-label="Cancel reply"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <!-- Input Bar -->
+            <div class="input-container">
+                <input type="file" id="mediaInput" accept="image/*,video/*" style="display: none;">
+                <div class="attach-wrap">
+                    <button class="icon-btn" id="attachBtn" title="Attach" aria-label="Attach" aria-haspopup="true"><i class="fa-solid fa-paperclip"></i></button>
+                    <div class="attach-menu hidden" id="attachMenu" role="menu">
+                        <button type="button" id="attachMediaBtn"><i class="fa-regular fa-image"></i> Photo / Video</button>
+                        <button type="button" id="attachLocationBtn"><i class="fa-solid fa-location-dot"></i> Current location</button>
+                        <button type="button" id="attachPollBtn"><i class="fa-solid fa-square-poll-vertical"></i> Poll</button>
+                        <button type="button" id="attachViewOnceBtn"><i class="fa-solid fa-eye"></i> View-once photo</button>
+                    </div>
+                </div>
+                <button class="icon-btn" id="emojiToggleBtn" title="Emojis"><i class="fa-regular fa-face-smile"></i></button>
+
+                <input type="text" id="message" placeholder="Type a message..." autocomplete="off">
+                <button class="icon-btn" id="voiceRecordBtn" title="Record Voice Note"><i class="fa-solid fa-microphone"></i></button>
+                <button class="send-btn" id="sendBtn"><span>Send</span><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Privacy -->
+    <div class="modal-overlay hidden" id="privacyModal">
+        <div class="modal-card privacy-card">
+            <button class="close-modal-btn" id="closePrivacyBtn" aria-label="Close">&times;</button>
+            <div class="privacy-head">
+                <button type="button" id="privacyBack" aria-label="Back" hidden><i class="fa-solid fa-arrow-left"></i></button>
+                <h2 id="privacyTitle">Privacy</h2>
+            </div>
+            <div id="privacyBody"></div>
+        </div>
+    </div>
+
+    <!-- Channels -->
+    <div class="modal-overlay hidden" id="channelModal">
+        <div class="modal-card channel-card">
+            <button class="close-modal-btn" id="closeChannelModalBtn" aria-label="Close">&times;</button>
+            <h2>Channels 📢</h2>
+            <p class="login-sub">Follow a channel for updates, or start your own — only you can post in it.</p>
+            <form class="channel-form" id="channelForm">
+                <div class="row">
+                    <input type="text" id="channelIcon" value="📢" maxlength="4" aria-label="Icon">
+                    <input type="text" id="channelName" placeholder="Channel name" maxlength="40" autocomplete="off">
+                </div>
+                <input type="text" id="channelDesc" placeholder="What is it about? (optional)" maxlength="140" autocomplete="off">
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Create channel</button>
+            </form>
+            <h4>Discover</h4>
+            <ul class="channel-list" id="channelList"></ul>
+        </div>
+    </div>
+
+    <!-- Games -->
+    <div class="modal-overlay hidden" id="gamesModal">
+        <div class="modal-card games-card">
+            <button class="close-modal-btn" id="closeGamesBtn" aria-label="Close">&times;</button>
+            <div id="gameStage"></div>
+        </div>
+    </div>
+
+    <!-- Reminders -->
+    <div class="modal-overlay hidden" id="reminderModal">
+        <div class="modal-card reminder-card">
+            <button class="close-modal-btn" id="closeReminderModalBtn" aria-label="Close">&times;</button>
+            <h2>Reminders</h2>
+            <p class="login-sub">Events, birthdays, meetings — AuraChat will ring when it's time.</p>
+            <form class="reminder-form" id="reminderForm">
+                <input type="text" id="reminderTitle" placeholder="What's the event?" maxlength="80" autocomplete="off">
+                <div class="row">
+                    <input type="datetime-local" id="reminderWhen">
+                    <select id="reminderRepeat" aria-label="Repeat">
+                        <option value="none">No repeat</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> Add reminder</button>
+            </form>
+            <ul class="reminder-list" id="reminderList"></ul>
+        </div>
+    </div>
+
+    <!-- Emoji sheet: the complete emoji set (search, categories, skin tones) -->
+    <div class="emoji-sheet hidden" id="emojiSheet" role="dialog" aria-label="Emojis">
+        <div class="emoji-sheet-card">
+            <div class="emoji-sheet-head">
+                <label class="emoji-send-toggle" id="emojiSendWrap" title="Send the emoji straight away as a message">
+                    <span class="switch"><input type="checkbox" id="emojiSendToggle"><i></i></span>
+                    <span>Send as message</span>
+                </label>
+                <button type="button" class="close-modal-btn" id="closeEmojiSheet" aria-label="Close">&times;</button>
+            </div>
+            <emoji-picker id="emojiPickerEl"></emoji-picker>
+        </div>
+    </div>
+
+    <!-- Emoji picker web component (loads the full Unicode emoji list) -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
+
+    <!-- SweetAlert2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <!-- Mobile sidebar drawer -->
+    <script>
+        (function () {
+            const sidebar = document.getElementById("sidebar");
+            const backdrop = document.getElementById("sidebarBackdrop");
+            const toggle = document.getElementById("menuToggleBtn");
+            const setOpen = (open) => {
+                sidebar.classList.toggle("open", open);
+                backdrop.classList.toggle("show", open);
+            };
+            toggle.addEventListener("click", () => setOpen(!sidebar.classList.contains("open")));
+            backdrop.addEventListener("click", () => setOpen(false));
+            document.getElementById("activeUsersList").addEventListener("click", () => setOpen(false));
+        })();
+    </script>
+
+    <script src="appearance.js"></script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
